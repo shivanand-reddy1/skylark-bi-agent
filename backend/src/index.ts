@@ -8,7 +8,7 @@ import { healthRouter } from './routes/health';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Middleware
 app.use(cors({
@@ -55,8 +55,8 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: 'An internal error occurred. Please try again.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Skylark BI Backend running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Skylark BI Backend running on http://0.0.0.0:${PORT}`);
 });
 
 export default app;
