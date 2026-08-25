@@ -21,7 +21,7 @@ function getOpenAI(): OpenAI | null {
 }
 
 async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
-  const key = process.env.OPENAI_API_KEY; // Gemini key stored here
+  const key = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY; // try dedicated key first
   if (!key || key.length < 20) throw new Error('No Gemini API key');
 
   const model = 'gemini-2.0-flash';
@@ -63,7 +63,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
 }
 
 async function callGeminiJSON(systemPrompt: string, userPrompt: string): Promise<string> {
-  const key = process.env.OPENAI_API_KEY;
+  const key = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY;
   if (!key || key.length < 20) throw new Error('No Gemini API key');
 
   const model = 'gemini-2.0-flash';
