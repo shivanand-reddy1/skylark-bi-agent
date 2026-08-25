@@ -84,44 +84,52 @@ function fallbackExplanation(ctx: ExplainerContext): string {
   const data = ctx.analyticsResult as Record<string, unknown>;
   const lines: string[] = [];
 
-  // Build a professional structured response
-  lines.push(`## Analysis: ${ctx.question}`);
+  lines.push(`## ${ctx.question}`);
+  lines.push('');
+  lines.push('**Key Metrics:**');
   lines.push('');
 
   if (typeof data === 'object' && data !== null) {
-    // Group formatted vs raw fields
-    const formattedPairs: string[] = [];
-    const numericPairs: string[] = [];
+    // Extract all formatted values (end with 'Formatted')
+    const metrics: string[] = [];
+    const counts: string[] = [];
 
-    for (const [key, value] of Object.entries(data)) {
-      if (key.startsWith('_') || Array.isArray(value) || typeof value === 'object') continue;
-      const label = key
-        .replace(/([A-Z])/g, ' $1')
-        .replace(/^./, (s) => s.toUpperCase())
-        .trim();
+    const extractValues = (obj: Record<string, unknown>, prefix = '') => {
+      for (const [key, value] of Object.entries(obj)) {
+        if (key.startsWith('_') || value === null || value === undefined) continue;
+        const label = (prefix ? `${prefix} ` : '') + key
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, s => s.toUpperCase())
+          .trim();
 
-      if (key.endsWith('Formatted') || key.endsWith('Rate') || key.endsWith('formatted')) {
-        formattedPairs.push(`**${label.replace(' Formatted', '')}:** ${value}`);
-      } else if (typeof value === 'number' && !key.toLowerCase().includes('pipeline') && !key.toLowerCase().includes('value')) {
-        numericPairs.push(`**${label}:** ${value}`);
+        if (key.endsWith('Formatted') && typeof value === 'string') {
+          const cleanLabel = label.replace(' Formatted', '');
+          metrics.push(`- **${cleanLabel}:** ${value}`);
+        } else if (typeof value === 'number' && Number.isInteger(value) && value < 10000) {
+          counts.push(`- **${label}:** ${value}`);
+        } else if (typeof value === 'string' && !key.endsWith('Formatted') && value.length < 50) {
+          counts.push(`- **${label}:** ${value}`);
+        } else if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+          extractValues(value as Record<string, unknown>);
+        }
       }
-    }
+    };
 
-    if (formattedPairs.length > 0) {
-      lines.push('### Key Metrics');
-      formattedPairs.forEach(p => lines.push(`- ${p}`));
-      lines.push('');
-    }
+    extractValues(data);
 
-    if (numericPairs.length > 0) {
-      lines.push('### Additional Details');
-      numericPairs.forEach(p => lines.push(`- ${p}`));
+    if (metrics.length > 0) {
+      metrics.forEach(m => lines.push(m));
+    }
+    if (counts.length > 0) {
       lines.push('');
+      lines.push('**Details:**');
+      counts.slice(0, 8).forEach(c => lines.push(c));
     }
   }
 
   if (ctx.dataQualityWarnings.length > 0) {
-    lines.push('### Data Quality Notes');
+    lines.push('');
+    lines.push('**Data Caveats:**');
     ctx.dataQualityWarnings.forEach((w) => lines.push(`- ${w}`));
   }
 

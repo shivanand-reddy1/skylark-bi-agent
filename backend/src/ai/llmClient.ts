@@ -136,6 +136,9 @@ export async function chatComplete(
 
   // Fall back to Gemini
   try {
+    console.log('[LLMClient] Trying Gemini...');
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '';
+    console.log('[LLMClient] Gemini key length:', geminiKey.length, 'starts with:', geminiKey.substring(0, 4));
     if (options.json) {
       return await callGeminiJSON(systemPrompt, userPrompt);
     } else {
@@ -143,7 +146,7 @@ export async function chatComplete(
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn('[LLMClient] Gemini also failed:', msg.substring(0, 100));
+    console.warn('[LLMClient] Gemini also failed:', msg.substring(0, 200));
     throw new Error('Both OpenAI and Gemini are unavailable');
   }
 }
