@@ -43,8 +43,9 @@ export function ChatMessageBubble({ message }: Props) {
             </div>
           </div>
 
-          {/* Data quality warnings */}
-          {message.dataQualityWarnings && message.dataQualityWarnings.length > 0 && (
+          {/* Data quality warnings - only show if NOT already in the answer */}
+          {message.dataQualityWarnings && message.dataQualityWarnings.length > 0 && 
+           !message.content.includes('Data Caveats') && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
               <p className="text-xs font-semibold text-amber-700 mb-1 flex items-center gap-1">
                 <span>⚠️</span> Data Quality Notes
