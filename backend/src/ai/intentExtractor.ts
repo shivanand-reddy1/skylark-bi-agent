@@ -32,20 +32,7 @@ export interface ExtractedIntent {
   raw: string;
 }
 
-import OpenAI from 'openai';
-
-let openaiClient: OpenAI | null = null;
-
-function getOpenAI(): OpenAI {
-  if (!openaiClient) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is not configured. Please set it in your .env file.');
-    }
-    openaiClient = new OpenAI({ apiKey });
-  }
-  return openaiClient;
-}
+import { chatComplete } from './llmClient';
 
 const INTENT_SYSTEM_PROMPT = `You are an intent extraction assistant for a drone company's business intelligence tool.
 Extract the user's intent from their question and return ONLY a valid JSON object.
@@ -102,22 +89,9 @@ export async function extractIntent(
 
   // LLM for everything else
   try {
-    const openai = getOpenAI();
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: INTENT_SYSTEM_PROMPT },
-      ...history.slice(-4).map((h) => ({ role: h.role, content: h.content })),
-      { role: 'user', content: message },
-    ];
-
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages,
-      temperature: 0,
-      max_tokens: 300,
-      response_format: { type: 'json_object' },
-    });
-
-    const raw = response.choices[0]?.message?.content ?? '{}';
+    const historyText = history.slice(-4).map((h) => `${h.role}: ${h.content}`).join('\n');
+    const userPrompt = historyText ? `${historyText}\nuser: ${message}` : `user: ${message}`;
+    const raw = await chatComplete(INTENT_SYSTEM_PROMPT, userPrompt, { json: true, maxTokens: 300 });
     const parsed = JSON.parse(raw) as Partial<ExtractedIntent>;
 
     return {

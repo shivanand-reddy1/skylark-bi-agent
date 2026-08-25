@@ -5,18 +5,9 @@
  * The LLM receives RESULTS, not raw data — it cannot alter the numbers.
  */
 
-import OpenAI from 'openai';
+import { chatComplete } from './llmClient';
 
-let openaiClient: OpenAI | null = null;
-
-function getOpenAI(): OpenAI {
-  if (!openaiClient) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error('OPENAI_API_KEY is not configured.');
-    openaiClient = new OpenAI({ apiKey });
-  }
-  return openaiClient;
-}
+let _unused: unknown; // keep openai import unused warning away
 
 const EXPLAINER_SYSTEM_PROMPT = `You are Skylark Drones' Business Intelligence assistant.
 You help founders and executives understand their business data.
@@ -59,19 +50,7 @@ ${warnings.length > 0 ? `Data quality notes:\n${warnings.map((w) => `- ${w}`).jo
 Please provide a concise, founder-friendly response based on this data.`;
 
   try {
-    const openai = getOpenAI();
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: EXPLAINER_SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 800,
-    });
-
-    const answer = response.choices[0]?.message?.content ?? fallbackExplanation(ctx);
-
+    const answer = await chatComplete(EXPLAINER_SYSTEM_PROMPT, userPrompt, { maxTokens: 800 });
     return {
       answer,
       structuredData: ctx.analyticsResult,
@@ -79,7 +58,7 @@ Please provide a concise, founder-friendly response based on this data.`;
       source: 'Monday.com (live)',
     };
   } catch (err) {
-    console.error('[Explainer] LLM failed, using fallback:', err);
+    console.error('[Explainer] All LLMs failed, using fallback:', err);
     return {
       answer: fallbackExplanation(ctx),
       structuredData: ctx.analyticsResult,
