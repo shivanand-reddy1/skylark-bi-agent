@@ -9,18 +9,29 @@ import { chatComplete } from './llmClient';
 
 let _unused: unknown; // keep openai import unused warning away
 
-const EXPLAINER_SYSTEM_PROMPT = `You are Skylark Drones' Business Intelligence assistant.
-You help founders and executives understand their business data.
+const EXPLAINER_SYSTEM_PROMPT = `You are Skylark Drones' Business Intelligence assistant helping founders and executives.
+
+RESPONSE FORMAT — always use this structure:
+**Summary:** [1-2 sentence executive summary of the key finding]
+
+**Key Metrics:**
+- [Metric 1]: [Value]
+- [Metric 2]: [Value]
+
+**Key Insights:**
+- [Insight 1]
+- [Insight 2]
+
+**Recommended Focus:**
+- [Action 1]
 
 RULES:
-1. Be concise — executives are busy. Aim for 3-5 sentences max per section.
-2. Lead with the most important insight, not background.
-3. Use ₹ for Indian Rupees. Use "Cr" for crores, "L" for lakhs.
-4. If data quality issues exist, mention them briefly at the end.
-5. Suggest 1-2 actionable next steps when relevant.
-6. NEVER invent numbers. Only use the data provided.
-7. Respond in a professional but direct tone.
-8. Format your response as structured text, not JSON.`;
+1. Be concise — executives are busy.
+2. Use ₹ for Indian Rupees. Use "Cr" for crores, "L" for lakhs.
+3. NEVER invent numbers. Only use the data provided.
+4. If data quality issues exist, mention them briefly at the end as "Data Caveats".
+5. Always lead with the most important business insight.
+6. Professional but direct tone — no fluff.`;
 
 export interface ExplainerContext {
   question: string;
@@ -68,27 +79,49 @@ Please provide a concise, founder-friendly response based on this data.`;
   }
 }
 
-/** Fallback when LLM is unavailable — plain text from structured data */
+/** Fallback when LLM is unavailable — professional structured text from analytics data */
 function fallbackExplanation(ctx: ExplainerContext): string {
   const data = ctx.analyticsResult as Record<string, unknown>;
-  const lines: string[] = [`Here is the analysis based on your question: "${ctx.question}"`, ''];
+  const lines: string[] = [];
+
+  // Build a professional structured response
+  lines.push(`## Analysis: ${ctx.question}`);
+  lines.push('');
 
   if (typeof data === 'object' && data !== null) {
+    // Group formatted vs raw fields
+    const formattedPairs: string[] = [];
+    const numericPairs: string[] = [];
+
     for (const [key, value] of Object.entries(data)) {
-      if (
-        typeof value === 'string' ||
-        typeof value === 'number' ||
-        typeof value === 'boolean'
-      ) {
-        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
-        lines.push(`${label}: ${value}`);
+      if (key.startsWith('_') || Array.isArray(value) || typeof value === 'object') continue;
+      const label = key
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, (s) => s.toUpperCase())
+        .trim();
+
+      if (key.endsWith('Formatted') || key.endsWith('Rate') || key.endsWith('formatted')) {
+        formattedPairs.push(`**${label.replace(' Formatted', '')}:** ${value}`);
+      } else if (typeof value === 'number' && !key.toLowerCase().includes('pipeline') && !key.toLowerCase().includes('value')) {
+        numericPairs.push(`**${label}:** ${value}`);
       }
+    }
+
+    if (formattedPairs.length > 0) {
+      lines.push('### Key Metrics');
+      formattedPairs.forEach(p => lines.push(`- ${p}`));
+      lines.push('');
+    }
+
+    if (numericPairs.length > 0) {
+      lines.push('### Additional Details');
+      numericPairs.forEach(p => lines.push(`- ${p}`));
+      lines.push('');
     }
   }
 
   if (ctx.dataQualityWarnings.length > 0) {
-    lines.push('');
-    lines.push('Data quality notes:');
+    lines.push('### Data Quality Notes');
     ctx.dataQualityWarnings.forEach((w) => lines.push(`- ${w}`));
   }
 
