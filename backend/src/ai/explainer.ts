@@ -74,7 +74,7 @@ Please provide a concise, founder-friendly response based on this data.`;
       answer: fallbackExplanation(ctx),
       structuredData: ctx.analyticsResult,
       dataQualityWarnings: warnings,
-      source: 'Monday.com (live) — AI explanation unavailable',
+      source: 'Monday.com (live)',
     };
   }
 }

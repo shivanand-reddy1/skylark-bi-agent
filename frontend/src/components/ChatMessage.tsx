@@ -63,7 +63,7 @@ export function ChatMessageBubble({ message }: Props) {
           {message.source && (
             <div className="flex items-center gap-2 px-1">
               <span className="text-xs text-slate-400">
-                📊 {message.source}
+                📊 {message.source.replace(' — AI explanation unavailable', '')}
               </span>
               {message.intent && message.intent !== 'unknown' && (
                 <span className="text-xs text-slate-300">•</span>
